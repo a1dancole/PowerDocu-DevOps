@@ -1,0 +1,87 @@
+{
+    "id": "255799c1-9f7d-442d-ae53-aa43769f13d6",
+    "name": "powerdocu",
+    "friendlyName": "PowerDocu",
+    "description": "Generate tehcnical documentation for your Power Apps canvas apps and Power Automate Flows",
+    "helpMarkDown": "[For more information on this task please visit](https://github.com/modery/PowerDocu)",
+    "category": "Utility",
+    "author": "Rene Modery",
+    "helpUrl": "https://github.com/modery/PowerDocu",
+    "runsOn": [
+        "Agent",
+        "Server"
+    ],
+    "version": {
+        "Major": 0,
+        "Minor": 1,
+        "Patch": 0
+    },
+    "visibility": [
+        "Build",
+        "Release"
+    ],
+    "instanceNameFormat": "Generating Power Apps documentation",
+    "inputs": [
+        {
+            "name": "itemsToDocument",
+            "type": "string",
+            "label": "Items to Document",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "Semi colon delimited list of paths of items to document"
+        },
+        {
+            "name": "markDown",
+            "type": "boolean",
+            "label": "Markdown",
+            "defaultValue": false,
+            "required": true,
+            "helpMarkDown": "Format documentation as Markdown"
+        },
+        {
+            "name": "word",
+            "type": "boolean",
+            "label": "Word",
+            "defaultValue": true,
+            "required": true,
+            "helpMarkDown": "Format documentation as Word"
+        },
+        {
+            "name": "changesOnly",
+            "type": "boolean",
+            "label": "Changes Only",
+            "defaultValue": false,
+            "required": true,
+            "helpMarkDown": "Document changes only or all properties"
+        },
+        {
+            "name": "defaultValues",
+            "type": "boolean",
+            "label": "Default Values",
+            "defaultValue": true,
+            "required": true,
+            "helpMarkDown": "Document Canvas App Default values"
+        },
+        {
+            "name": "sortFlowsByName",
+            "type": "boolean",
+            "label": "Sort Flows By Name",
+            "defaultValue": false,
+            "required": true,
+            "helpMarkDown": "Sort flows by name or order of appearance"
+        },
+        {
+            "name": "wordTemplate",
+            "type": "string",
+            "label": "Word Template",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Path to a word template to use when generating a word document"
+        }
+    ],
+    "execution": {
+        "Node": {
+            "target": "index.js"
+        }
+    }
+}
