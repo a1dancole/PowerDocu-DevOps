@@ -16,6 +16,7 @@ const powerDocuVersion: string = config.powerDocuVersion;
 
 interface PowerDocuRepository {
     Url: string;
+    Filename: string;
     Version: string;
 }
 
@@ -65,8 +66,10 @@ async function getSelfContainedReleaseUrl(handler): Promise<PowerDocuRepository>
         httpClient.get(latestReleaseUrl).then((res) => {
             res.readBody().then((body) => {
                 let response = JSON.parse(body);
+                let selfContainedRelease = response["assets"].find(asset => asset["name"].contains('selfcontained'))[0];
                 let release: PowerDocuRepository = {
-                    Url: response["assets"].find(asset => asset["name"].contains('selfcontained'))[0].url,
+                    Url: selfContainedRelease.url,
+                    Filename: selfContainedRelease.name,
                     Version: response["tag_name"]
                 }
                 resolve(release);
@@ -135,6 +138,25 @@ function executeWithRetriesImplementation<T>(operationName: string, operation: (
     });
 }
 
+function unzipRelease(repository: PowerDocuRepository): Promise<void> {
+    return new Promise<void>(async (resolve, reject) => {
+        var destinationFolder = tl.getVariable('agent.tempdirectory');
+        var unzipLocation = tl.which('unzip', true);
+        var unzip = tl.tool(unzipLocation);
+        unzip.arg(repository.Filename);
+        unzip.arg('-d');
+        unzip.arg(destinationFolder);
+        var execResult = await unzip.exec();
+
+        if (execResult != tl.TaskResult.Succeeded) {
+            reject("Failed to unzip PowerDocu release");
+        }
+
+        resolve();
+    })
+
+}
+
 async function main(): Promise<void> {
     var promise = new Promise<void>(async (resolve, reject) => {
         var customCredentialHandler = {
@@ -166,7 +188,8 @@ async function main(): Promise<void> {
             downloaderOptions.parallelProcessingLimit = parallelLimit;
         }
 
-        await downloader.processItems(webProvider, fileSystemProvider, downloaderOptions).then((result) => {
+        await downloader.processItems(webProvider, fileSystemProvider, downloaderOptions).then(async (result) => {
+            await unzipRelease(selfContainedRelease);
             console.log(tl.loc('ToolsSuccessfullyDownloaded', selfContainedRelease.Version));
         }).catch((error) => {
             reject(error);
@@ -214,8 +237,7 @@ async function main(): Promise<void> {
 
         }
 
-
-
+        resolve();
     });
 
     return promise;
