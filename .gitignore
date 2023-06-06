@@ -1,1 +1,3 @@
 node_modules
+buildRelease/main.js
+buildRelease/.taskkey

@@ -14,7 +14,7 @@ const area: string = 'PowerDocu';
 const userAgent: string = `powerdocu-${config.version}`;
 const powerDocuVersion: string = config.powerDocuVersion;
 
-interface PowerDocuRepository {
+interface PowerDocuRelease {
     Url: string;
     Filename: string;
     Version: string;
@@ -58,17 +58,21 @@ function publishTelemetry(feature, properties: any): void {
     }
 }
 
-async function getSelfContainedReleaseUrl(handler): Promise<PowerDocuRepository> {
-    var promise = new Promise<PowerDocuRepository>((resolve, reject) => {
-        let httpClient: httpc.HttpClient = new httpc.HttpClient(userAgent, [handler]);
+async function getPowerDocuRelease(handler): Promise<PowerDocuRelease> {
+    var promise = new Promise<PowerDocuRelease>((resolve, reject) => {
+        let httpClient: httpc.HttpClient = new httpc.HttpClient(userAgent, [handler], { ignoreSslError: true });
         let latestReleaseUrl = `https://api.github.com/repos/modery/PowerDocu/releases/tags/${powerDocuVersion}`;
         latestReleaseUrl = latestReleaseUrl.replace(/([^:]\/)\/+/g, "$1");
+
+        console.log(`Fetching release from ${latestReleaseUrl}`);
         httpClient.get(latestReleaseUrl).then((res) => {
             res.readBody().then((body) => {
                 let response = JSON.parse(body);
-                let selfContainedRelease = response["assets"].find(asset => asset["name"].contains('selfcontained'))[0];
-                let release: PowerDocuRepository = {
-                    Url: selfContainedRelease.url,
+                console.log(response);
+                let selfContainedRelease = response["assets"].filter(o => o.name.includes('selfcontained'))[0];
+                console.log(selfContainedRelease);
+                let release: PowerDocuRelease = {
+                    Url: selfContainedRelease.browser_download_url,
                     Filename: selfContainedRelease.name,
                     Version: response["tag_name"]
                 }
@@ -76,6 +80,7 @@ async function getSelfContainedReleaseUrl(handler): Promise<PowerDocuRepository>
             });
         }, (reason) => {
             reject(reason);
+            console.log(`Failed to retrieve self contained release reason: ${reason}`)
         });
     });
 
@@ -119,7 +124,6 @@ function buildCliArguments(tr: ToolRunner) {
     if (wordTemplate != '') {
         tr.arg('-t ' + wordTemplate)
     }
-
 }
 
 function executeWithRetriesImplementation<T>(operationName: string, operation: () => Promise<T>, currentRetryCount, resolve, reject) {
@@ -138,64 +142,59 @@ function executeWithRetriesImplementation<T>(operationName: string, operation: (
     });
 }
 
-function unzipRelease(repository: PowerDocuRepository): Promise<void> {
+function unzipRelease(release: PowerDocuRelease): Promise<void> {
     return new Promise<void>(async (resolve, reject) => {
-        var destinationFolder = tl.getVariable('agent.tempdirectory');
+        var destinationFolder = "C:\temp" //tl.getVariable('agent.tempdirectory');
         var unzipLocation = tl.which('unzip', true);
         var unzip = tl.tool(unzipLocation);
-        unzip.arg(repository.Filename);
+        unzip.arg(release.Filename);
         unzip.arg('-d');
         unzip.arg(destinationFolder);
-        var execResult = await unzip.exec();
 
-        if (execResult != tl.TaskResult.Succeeded) {
-            reject("Failed to unzip PowerDocu release");
-        }
-
-        resolve();
+        await unzip.exec().then(result => {
+            resolve();
+        }).catch(err => {
+            reject(err);
+        })
     })
-
 }
 
 async function main(): Promise<void> {
     var promise = new Promise<void>(async (resolve, reject) => {
-        var customCredentialHandler = {
-            canHandleAuthentication: () => false,
-            handleAuthentication: () => { },
-            prepareRequest: (options) => { }
-        };
-
-        let selfContainedRelease = await executeWithRetries("getSelfContainedReleaseUrl", () => getSelfContainedReleaseUrl(customCredentialHandler), 3);
-        var templatePath = path.join(__dirname, 'powerdocu.handlebars.txt');
-        var gitHubReleaseVariables = {
-            "endpoint": {
-                "url": "https://api.github.com/"
-            }
-        };
-        var downloadPath = tl.getVariable('agent.tempdirectory');
-
-        var webProvider = new providers.WebProvider(selfContainedRelease.Url, templatePath, gitHubReleaseVariables, customCredentialHandler);
-        var fileSystemProvider = new providers.FilesystemProvider(downloadPath);
-        var parallelLimit: number = +tl.getVariable("release.artifact.download.parallellimit");
-
-        var downloader = new engine.ArtifactEngine();
-        var downloaderOptions = new engine.ArtifactEngineOptions();
-        downloaderOptions.itemPattern = '**';
-        var debugMode = tl.getVariable('System.Debug');
-        downloaderOptions.verbose = debugMode ? debugMode.toLowerCase() != 'false' : false;
-
-        if (parallelLimit) {
-            downloaderOptions.parallelProcessingLimit = parallelLimit;
-        }
-
-        await downloader.processItems(webProvider, fileSystemProvider, downloaderOptions).then(async (result) => {
-            await unzipRelease(selfContainedRelease);
-            console.log(tl.loc('ToolsSuccessfullyDownloaded', selfContainedRelease.Version));
-        }).catch((error) => {
-            reject(error);
-        });
-
         try {
+            var customCredentialHandler = {
+                canHandleAuthentication: () => false,
+                handleAuthentication: () => { },
+                prepareRequest: (options) => { }
+            };
+
+            let powerDocuRelease = await executeWithRetries("getPowerDocuRelease", () => getPowerDocuRelease(customCredentialHandler), 3);
+            console.log(`PowerDocu release found: ${powerDocuRelease.Filename}`);
+            var templatePath = path.join(__dirname, 'powerdocu.handlebars.txt');
+            var gitHubReleaseVariables = {
+                "endpoint": {
+                    "url": "https://api.github.com/"
+                }
+            };
+            var downloadPath = "C:\temp" //tl.getVariable('agent.tempdirectory');
+
+            var webProvider = new providers.WebProvider(powerDocuRelease.Url, templatePath, gitHubReleaseVariables, customCredentialHandler, { ignoreSslError: true });
+            var fileSystemProvider = new providers.FilesystemProvider(downloadPath);
+            var parallelLimit: number = +tl.getVariable("release.artifact.download.parallellimit");
+
+            var downloader = new engine.ArtifactEngine();
+            var downloaderOptions = new engine.ArtifactEngineOptions();
+            downloaderOptions.itemPattern = '**';
+            var debugMode = tl.getVariable('System.Debug');
+            downloaderOptions.verbose = debugMode ? debugMode.toLowerCase() != 'false' : false;
+
+            if (parallelLimit) {
+                downloaderOptions.parallelProcessingLimit = parallelLimit;
+            }
+            console.log(`Downloading ZIP from ${powerDocuRelease.Url}`)
+            await downloader.processItems(webProvider, fileSystemProvider, downloaderOptions);
+            await unzipRelease(powerDocuRelease);
+
             const aggregatedStderr: string[] = [];
             let stderrFailure = false;
             let cli = tl.tool(tl.which('bash', true));
@@ -213,31 +212,24 @@ async function main(): Promise<void> {
                 stderrFailure = true;
                 aggregatedStderr.push(data.toString('utf8'));
             });
+
             let exitCode: number = await cli.exec(options);
 
-            let result = tl.TaskResult.Succeeded;
-
             if (exitCode !== 0) {
-                tl.error(tl.loc('ExitCode', exitCode));
-                result = tl.TaskResult.Failed;
+                reject(exitCode);
             }
-    
+
             if (stderrFailure) {
-                tl.error(tl.loc('Error'));
                 aggregatedStderr.forEach((err: string) => {
                     tl.error(err);
                 });
-                result = tl.TaskResult.Failed;
+                reject(aggregatedStderr);
             }
-    
-            tl.setResult(result, null, true);
+
+            resolve();
         } catch (err: any) {
-            tl.setResult(tl.TaskResult.Failed, err.message || 'PowerDocu generation failed', true);
-        } finally {
-
+            reject(err);
         }
-
-        resolve();
     });
 
     return promise;
@@ -245,10 +237,10 @@ async function main(): Promise<void> {
 
 main()
     .then((result) => {
-        tl.setResult(tl.TaskResult.Succeeded, "");
+        tl.setResult(tl.TaskResult.Succeeded, "", true);
     })
     .catch((err) => {
-        publishTelemetry('reliability', { issueType: 'error', errorMessage: JSON.stringify(err, Object.getOwnPropertyNames(err)) });
-        tl.setResult(tl.TaskResult.Failed, err);
+        //publishTelemetry('reliability', { issueType: 'error', errorMessage: JSON.stringify(err, Object.getOwnPropertyNames(err)) });
+        tl.setResult(tl.TaskResult.Failed, err, true);
     });
 
