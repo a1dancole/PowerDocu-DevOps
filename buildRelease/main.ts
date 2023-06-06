@@ -4,6 +4,8 @@ import * as httpc from 'typed-rest-client/HttpClient';
 import * as engine from 'artifact-engine/Engine';
 import * as providers from 'artifact-engine/Providers';
 import * as tl from 'azure-pipelines-task-lib/task';
+import * as tr from 'azure-pipelines-task-lib/toolrunner';
+import { ToolRunner } from 'azure-pipelines-task-lib/toolrunner';
 
 var config = require('./config.json');
 var task = require('./task.json')
@@ -13,7 +15,7 @@ const userAgent: string = `powerdocu-${config.version}`;
 const powerDocuVersion: string = config.powerDocuVersion;
 
 interface PowerDocuRepository {
-    SelfContainedUrl: string;
+    Url: string;
     Version: string;
 }
 
@@ -64,7 +66,7 @@ async function getSelfContainedReleaseUrl(handler): Promise<PowerDocuRepository>
             res.readBody().then((body) => {
                 let response = JSON.parse(body);
                 let release: PowerDocuRepository = {
-                    SelfContainedUrl: response["assets"].find(asset => asset["name"].contains('selfcontained'))[0],
+                    Url: response["assets"].find(asset => asset["name"].contains('selfcontained'))[0].url,
                     Version: response["tag_name"]
                 }
                 resolve(release);
@@ -83,6 +85,38 @@ function executeWithRetries<T>(operationName: string, operation: () => Promise<T
     });
 
     return executePromise;
+}
+
+function buildCliArguments(tr: ToolRunner) {
+    let itemsToDocument: string = tl.getInput('itemsToDocument', true);
+    let markDown: boolean = tl.getBoolInput('markDown', false);
+    let word: boolean = tl.getBoolInput('word', false);
+    let changesOnly: boolean = tl.getBoolInput('changesOnly', false);
+    let defaultValues: boolean = tl.getBoolInput('defaultValues', false);
+    let sortFlowsByName: boolean = tl.getBoolInput('sortFlowsByName', false);
+    let wordTemplate: string = tl.getInput('wordTemplate', false);
+
+    tr.arg('.\PowerDocu.CLI.exe -p ' + itemsToDocument);
+
+    if (markDown) {
+        tr.arg('-m')
+    }
+    if (word) {
+        tr.arg('-w')
+    }
+    if (changesOnly) {
+        tr.arg('-c')
+    }
+    if (defaultValues) {
+        tr.arg('-d')
+    }
+    if (sortFlowsByName) {
+        tr.arg('-s')
+    }
+    if (wordTemplate != '') {
+        tr.arg('-t ' + wordTemplate)
+    }
+
 }
 
 function executeWithRetriesImplementation<T>(operationName: string, operation: () => Promise<T>, currentRetryCount, resolve, reject) {
@@ -116,10 +150,10 @@ async function main(): Promise<void> {
                 "url": "https://api.github.com/"
             }
         };
-        var downloadPath = tl.getVariable('AGENT.TOOLSDIRECTORY');
+        var downloadPath = tl.getVariable('agent.tempdirectory');
 
-        var webProvider = new providers.WebProvider(selfContainedRelease.SelfContainedUrl, templatePath, gitHubReleaseVariables, customCredentialHandler);
-        var fileSystemProvider = new providers.FilesystemProvider(selfContainedRelease.SelfContainedUrl);
+        var webProvider = new providers.WebProvider(selfContainedRelease.Url, templatePath, gitHubReleaseVariables, customCredentialHandler);
+        var fileSystemProvider = new providers.FilesystemProvider(downloadPath);
         var parallelLimit: number = +tl.getVariable("release.artifact.download.parallellimit");
 
         var downloader = new engine.ArtifactEngine();
@@ -133,12 +167,55 @@ async function main(): Promise<void> {
         }
 
         await downloader.processItems(webProvider, fileSystemProvider, downloaderOptions).then((result) => {
-            console.log(tl.loc('ToolsSuccessfullyDownloaded', downloadPath));
+            console.log(tl.loc('ToolsSuccessfullyDownloaded', selfContainedRelease.Version));
         }).catch((error) => {
             reject(error);
         });
 
-        
+        try {
+            const aggregatedStderr: string[] = [];
+            let stderrFailure = false;
+            let cli = tl.tool(tl.which('bash', true));
+            buildCliArguments(cli);
+
+            let options: tr.IExecOptions = {
+                cwd: downloadPath,
+                failOnStdErr: false,
+                errStream: process.stdout,
+                outStream: process.stdout,
+                ignoreReturnCode: true
+            };
+
+            cli.on('stderr', (data: Buffer) => {
+                stderrFailure = true;
+                aggregatedStderr.push(data.toString('utf8'));
+            });
+            let exitCode: number = await cli.exec(options);
+
+            let result = tl.TaskResult.Succeeded;
+
+            if (exitCode !== 0) {
+                tl.error(tl.loc('ExitCode', exitCode));
+                result = tl.TaskResult.Failed;
+            }
+    
+            if (stderrFailure) {
+                tl.error(tl.loc('Error'));
+                aggregatedStderr.forEach((err: string) => {
+                    tl.error(err);
+                });
+                result = tl.TaskResult.Failed;
+            }
+    
+            tl.setResult(result, null, true);
+        } catch (err: any) {
+            tl.setResult(tl.TaskResult.Failed, err.message || 'PowerDocu generation failed', true);
+        } finally {
+
+        }
+
+
+
     });
 
     return promise;

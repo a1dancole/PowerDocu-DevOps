@@ -80,8 +80,18 @@
         }
     ],
     "execution": {
-        "Node": {
-            "target": "index.js"
+        "Node10": {
+            "target": "main.js",
+            "argumentFormat": ""
+        },
+        "Node16": {
+            "target": "main.js",
+            "argumentFormat": ""
         }
+    },
+    "messages": {
+        "ToolsSuccessfullyDownloaded": "Downloaded PowerDocu version '%s'",
+        "ExitCode": "Command exited with code '%s'.",
+        "Error": "Errors were captured in the error output of command"
     }
 }
