@@ -1,3 +1,10 @@
 node_modules
 buildRelease/main.js
 buildRelease/.taskkey
+buildRelease/env.js
+buildRelease/github/githubapi.js
+buildRelease/helpers/retry.js
+buildRelease/models/github-release.js
+buildRelease/models/powerdocu-release.js
+buildRelease/zip/unzip.js
+.vscode/settings.json
