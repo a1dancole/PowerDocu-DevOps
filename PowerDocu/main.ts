@@ -142,10 +142,8 @@ async function main(): Promise<void> {
             let powerDocuRelease = await Retry.Operation('GetRelease', async () => await gitHubApi.GetRelease(`${config.GitHubRepository}/releases/tags/${config.PowerDocuVersion}`, userAgent, customCredentialHandler), 3); 
             tl.debug(`PowerDocu release found: ${powerDocuRelease.Version}`);
 
-            await Retry.Operation('DownloadRelease', async () => await gitHubApi.DownloadRelease(powerDocuRelease.Url, path.join(tempDirectory, powerDocuRelease.Filename), customCredentialHandler), 3).then(async () => {
-                await unzip.unzipRelease(path.join(tempDirectory, powerDocuRelease.Filename), tempDirectory)
-            })
-
+            await Retry.Operation('DownloadRelease', async () => await gitHubApi.DownloadRelease(powerDocuRelease.Url, path.join(tempDirectory, powerDocuRelease.Filename), customCredentialHandler), 3);
+            await unzip.unzipRelease(path.join(tempDirectory, powerDocuRelease.Filename), tempDirectory)
             var cli = await getCliWithArguments();
             await executeCli(cli, tempDirectory);
 
