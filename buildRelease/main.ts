@@ -1,19 +1,16 @@
 var path = require('path')
+var DecompressZip = require('decompress-zip');
+var config = require('./config.json');
 
 import * as httpc from 'typed-rest-client/HttpClient';
 import * as engine from 'artifact-engine/Engine';
 import * as providers from 'artifact-engine/Providers';
-import * as handlers from "artifact-engine/Providers/typed-rest-client/Handlers"
 import * as tl from 'azure-pipelines-task-lib/task';
 import * as tr from 'azure-pipelines-task-lib/toolrunner';
-import { ToolRunner } from 'azure-pipelines-task-lib/toolrunner';
-
-var DecompressZip = require('decompress-zip');
-var config = require('./config.json');
 
 const area: string = 'PowerDocu';
-const userAgent: string = `powerdocu-${config.version}`;
-const powerDocuVersion: string = config.powerDocuVersion;
+const userAgent: string = `powerdocu-${config.PowerDocuVersion}`;
+const powerDocuVersion: string = config.PowerDocuVersion;
 
 interface PowerDocuRelease {
     Url: string;
@@ -52,7 +49,7 @@ function publishTelemetry(feature, properties: any): void {
                 telemetry = "##vso[task.logissue type=error;code=" + reliabilityData.issueType + ";agentVersion=" + tl.getVariable('Agent.Version') + ";taskId=" + area + "-" + JSON.stringify(config.version) + ";]" + reliabilityData.errorMessage
             }
         }
-        console.log(telemetry);
+        tl.debug(telemetry);
     }
     catch (err) {
         tl.warning("Failed to log telemetry, error: " + err);
@@ -65,13 +62,13 @@ async function getPowerDocuRelease(handler): Promise<PowerDocuRelease> {
         let latestReleaseUrl = `${config.GitHubRepository}/releases/tags/${powerDocuVersion}`;
         latestReleaseUrl = latestReleaseUrl.replace(/([^:]\/)\/+/g, "$1");
 
-        console.log(`Fetching release from ${latestReleaseUrl}`);
+        tl.debug(`Fetching release from ${latestReleaseUrl}`);
         httpClient.get(latestReleaseUrl).then((res) => {
             res.readBody().then((body) => {
                 let response = JSON.parse(body);
-                console.log(response);
                 let selfContainedRelease = response["assets"].filter(o => o.name.includes('selfcontained'))[0];
-                console.log(selfContainedRelease);
+                tl.debug(`Found release on GitHub ${selfContainedRelease.name} with download URL ${selfContainedRelease.browser_download_url}`);
+
                 let release: PowerDocuRelease = {
                     Url: selfContainedRelease.browser_download_url,
                     Filename: selfContainedRelease.name,
@@ -81,7 +78,7 @@ async function getPowerDocuRelease(handler): Promise<PowerDocuRelease> {
             });
         }, (reason) => {
             reject(reason);
-            console.log(`Failed to retrieve self contained release reason: ${reason}`)
+            tl.warning(`Failed to retrieve self contained release reason: ${reason}`)
         });
     });
 }
@@ -94,47 +91,6 @@ function executeWithRetries<T>(operationName: string, operation: () => Promise<T
     return executePromise;
 }
 
-function getCliWithArguments(downloadPath: string): Promise<tr.ToolRunner> {
-    return new Promise<tr.ToolRunner>((resolve, reject) => {
-        try {
-            
-            let itemsToDocument = process.env.INPUT_ITEMSTODOCUMENT;
-            let markDown = process.env.INPUT_MARKDOWN;
-            let word = process.env.INPUT_WORD;
-            let changesOnly = process.env.INPUT_CHANGESONLY;
-            let defaultValues = process.env.INPUT_DEFAULTVALUES;
-            let sortFlowsByName = process.env.INPUT_SORTFLOWSBYNAME;
-            let wordTemplate = process.env.INPUT_WORDTEMPLATE;
-            let cli = tl.tool(tl.which('pwsh') || tl.which('powershell') || tl.which('pwsh', true))
-                .arg('-NoLogo')
-                .arg('-NoProfile')
-                .arg('-NonInteractive')
-                .arg('.\\PowerDocu.CLI.exe')
-                .arg('-p')
-                .arg(itemsToDocument)
-                .argIf(markDown == 'true', '-m')
-                .argIf(word == 'true', '-w')
-                .argIf(changesOnly == 'true', '-c')
-                .argIf(defaultValues == 'true', '-d')
-                .argIf(sortFlowsByName == 'true', '-s')
-                .argIf(wordTemplate != '', '-t')
-                .argIf(wordTemplate != '', wordTemplate);
-
-            // let itemsToDocument = tl.getInput('itemsToDocument', false) ?? process.env.INPUT_ITEMSTODOCUMENT;
-            // let markDown = tl.getBoolInput('markDown', false) ?? process.env.INPUT_MARKDOWN;
-            // let word = tl.getBoolInput('word', false) ?? process.env.INPUT_WORD;
-            // let changesOnly = tl.getBoolInput('changesOnly', false) ?? process.env.INPUT_CHANGESONLY;
-            // let defaultValues = tl.getBoolInput('defaultValues', false) ?? process.env.INPUT_DEFAULTVALUES;
-            // let sortFlowsByName = tl.getBoolInput('sortFlowsByName', false) ?? process.env.INPUT_SORTFLOWSBYNAME;
-            // let wordTemplate = tl.getInput('wordTemplate', false) ?? process.env.INPUT_WORDTEMPLATE;
-
-            resolve(cli);
-        } catch (err) {
-            reject(err)
-        }
-    })
-}
-
 function executeWithRetriesImplementation<T>(operationName: string, operation: () => Promise<T>, currentRetryCount, resolve, reject) {
     operation().then((result) => {
         resolve(result);
@@ -144,11 +100,45 @@ function executeWithRetriesImplementation<T>(operationName: string, operation: (
             reject(error);
         }
         else {
-            console.log(tl.loc('RetryingOperation', operationName, currentRetryCount));
+            tl.debug(tl.loc('RetryingOperation', operationName, currentRetryCount));
             currentRetryCount = currentRetryCount - 1;
             setTimeout(() => executeWithRetriesImplementation(operationName, operation, currentRetryCount, resolve, reject), 4 * 1000);
         }
     });
+}
+
+function getCliWithArguments(): Promise<tr.ToolRunner> {
+    return new Promise<tr.ToolRunner>((resolve, reject) => {
+        try {
+            let itemsToDocument = tl.getInput('itemsToDocument', true);
+            let markDown = tl.getBoolInput('markDown', false);
+            let word = tl.getBoolInput('word', false);
+            let changesOnly = tl.getBoolInput('changesOnly', false);
+            let defaultValues = tl.getBoolInput('defaultValues', false);
+            let sortFlowsByName = tl.getBoolInput('sortFlowsByName', false);
+            let wordTemplate = tl.getInput('wordTemplate', false);
+
+            let cli = tl.tool(tl.which('pwsh') || tl.which('powershell') || tl.which('pwsh', true))
+                .arg('-NoLogo')
+                .arg('-NoProfile')
+                .arg('-NonInteractive')
+                .arg('.\\PowerDocu.CLI.exe')
+                .arg('-p')
+                .arg(itemsToDocument)
+                .argIf(markDown, '-m')
+                .argIf(word, '-w')
+                .argIf(changesOnly, '-c')
+                .argIf(defaultValues, '-d')
+                .argIf(sortFlowsByName, '-s')
+                .argIf(wordTemplate != '', '-t')
+                .argIf(wordTemplate != '', wordTemplate);
+
+            resolve(cli);
+        } catch (err) {
+            tl.warning(`Failed to build CLI with arguments reason: ${err}`)
+            reject(err)
+        }
+    })
 }
 
 async function unzipRelease(release: PowerDocuRelease): Promise<void> {
@@ -158,14 +148,15 @@ async function unzipRelease(release: PowerDocuRelease): Promise<void> {
 
         var unzipper = new DecompressZip(zipLocation);
         unzipper.on('error', err => {
+            tl.warning(`Failed to Unzip PowerDocu reason: ${err}`)
             return reject(tl.loc("ExtractionFailed", err))
         });
         unzipper.on('extract', log => {
-            tl.debug('Extracted to ' + path.join(__dirname, "PowerDocu"));
+            tl.debug('Extracted to ' + path.join(__dirname, userAgent));
             return resolve();
         });
         unzipper.extract({
-            path: path.join(__dirname, "PowerDocu")
+            path: path.join(__dirname, userAgent)
         });
     });
 }
@@ -193,6 +184,7 @@ async function downloadGitHubRelease(release: PowerDocuRelease): Promise<void> {
         await downloader.processItems(zipProvider, filesystemProvider, downloaderOptions).then(async () => {
             resolve();
         }).catch(err => {
+            tl.warning(`Failed to download PowerDocu release ${release.Version} reason: ${err}`)
             reject(err);
         });
     })
@@ -208,21 +200,20 @@ async function main(): Promise<void> {
             };
 
             let powerDocuRelease = await executeWithRetries("getPowerDocuRelease", () => getPowerDocuRelease(customCredentialHandler), 3);
-            console.log(`PowerDocu release found: ${powerDocuRelease.Filename}`);
+            tl.debug(`PowerDocu release found: ${powerDocuRelease.Version}`);
 
-            var downloadPath = __dirname //tl.getVariable('agent.tempdirectory');
-
-            console.log(`Downloading ZIP from ${powerDocuRelease.Url}`)
+            tl.debug(`Downloading ZIP from ${powerDocuRelease.Url}`)
             await downloadGitHubRelease(powerDocuRelease).then(async () => {
+                tl.debug(`Unzipping release ${powerDocuRelease.Filename}`)
                 await unzipRelease(powerDocuRelease);
             })
 
             const aggregatedStderr: string[] = [];
             let stderrFailure = false;
 
-            var cli = await getCliWithArguments(downloadPath);
+            var cli = await getCliWithArguments();
             let options: tr.IExecOptions = {
-                cwd: path.join(__dirname, "PowerDocu"),
+                cwd: path.join(__dirname, userAgent),
                 failOnStdErr: false,
                 errStream: process.stdout,
                 outStream: process.stdout,
@@ -244,11 +235,13 @@ async function main(): Promise<void> {
                 aggregatedStderr.forEach((err: string) => {
                     tl.error(err);
                 });
+
                 reject(aggregatedStderr);
             }
 
             resolve();
         } catch (err: any) {
+            tl.error(`Unexpected error ${err}`)
             reject(err);
         }
     });

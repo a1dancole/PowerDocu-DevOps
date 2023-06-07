@@ -21,6 +21,13 @@
         "Release"
     ],
     "instanceNameFormat": "Generating Power Apps documentation",
+    "groups": [
+        {
+          "name": "Advanced",
+          "displayName": "Advanced Settings",
+          "isExpanded": true
+        }
+      ],
     "inputs": [
         {
             "name": "itemsToDocument",
@@ -36,7 +43,8 @@
             "label": "Markdown",
             "defaultValue": false,
             "required": false,
-            "helpMarkDown": "Format documentation as Markdown"
+            "helpMarkDown": "Format documentation as Markdown",
+            "groupName": "Advanced"
         },
         {
             "name": "word",
@@ -44,7 +52,8 @@
             "label": "Word",
             "defaultValue": true,
             "required": false,
-            "helpMarkDown": "Format documentation as Word"
+            "helpMarkDown": "Format documentation as Word",
+            "groupName": "Advanced"
         },
         {
             "name": "changesOnly",
@@ -52,7 +61,8 @@
             "label": "Changes Only",
             "defaultValue": false,
             "required": false,
-            "helpMarkDown": "Document changes only or all properties"
+            "helpMarkDown": "Document changes only or all properties",
+            "groupName": "Advanced"
         },
         {
             "name": "defaultValues",
@@ -60,7 +70,8 @@
             "label": "Default Values",
             "defaultValue": true,
             "required": false,
-            "helpMarkDown": "Document Canvas App Default values"
+            "helpMarkDown": "Document Canvas App Default values",
+            "groupName": "Advanced"
         },
         {
             "name": "sortFlowsByName",
@@ -68,7 +79,8 @@
             "label": "Sort Flows By Name",
             "defaultValue": false,
             "required": false,
-            "helpMarkDown": "Sort flows by name or order of appearance"
+            "helpMarkDown": "Sort flows by name or order of appearance",
+            "groupName": "Advanced"
         },
         {
             "name": "wordTemplate",
@@ -76,7 +88,8 @@
             "label": "Word Template",
             "defaultValue": "",
             "required": false,
-            "helpMarkDown": "Path to a word template to use when generating a word document"
+            "helpMarkDown": "Path to a word template to use when generating a word document",
+            "groupName": "Advanced"
         }
     ],
     "execution": {
