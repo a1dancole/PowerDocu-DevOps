@@ -12,6 +12,7 @@
   "dependencies": {
     "artifact-engine": "^1.2.0",
     "azure-pipelines-task-lib": "^4.3.1",
+    "decompress-zip": "^0.3.3",
     "typed-rest-client": "^1.8.9"
   },
   "devDependencies": {
