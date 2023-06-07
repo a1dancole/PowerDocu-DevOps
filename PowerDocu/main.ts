@@ -1,9 +1,9 @@
-var path = require('path');
 var config = require('./config.json');
 
-import * as tl from 'azure-pipelines-task-lib/task';
-import * as tr from 'azure-pipelines-task-lib/toolrunner';
-import * as os from "os";
+import path = require('path');
+import tl = require('azure-pipelines-task-lib/task');
+import tr = require("azure-pipelines-task-lib/toolrunner");
+import os = require("os")
 import { GitHubApi } from './github/githubapi';
 import { Unzip } from './zip/unzip';
 import { Retry } from './helpers/retry';
@@ -52,13 +52,20 @@ function publishTelemetry(feature, properties: any): void {
 function getCliWithArguments(): Promise<tr.ToolRunner> {
     return new Promise<tr.ToolRunner>((resolve, reject) => {
         try {
-            let itemsToDocument = tl.getInput('itemsToDocument', true);
+            let itemsToDocument = tl.getPathInput('itemsToDocument', true, true);
+            tl.debug(`itemsToDocument=${itemsToDocument}`);
             let markDown = tl.getBoolInput('markDown', false);
+            tl.debug(`markDown=${markDown}`);
             let word = tl.getBoolInput('word', false);
+            tl.debug(`word=${word}`);
             let changesOnly = tl.getBoolInput('changesOnly', false);
+            tl.debug(`changesOnly=${changesOnly}`);
             let defaultValues = tl.getBoolInput('defaultValues', false);
+            tl.debug(`defaultValues=${defaultValues}`);
             let sortFlowsByName = tl.getBoolInput('sortFlowsByName', false);
-            let wordTemplate = tl.getInput('wordTemplate', false);
+            tl.debug(`sortFlowsByName=${sortFlowsByName}`);
+            let wordTemplate = tl.getPathInput('wordTemplate', false);
+            tl.debug(`wordTemplate=${wordTemplate}`);
 
             let cli = tl.tool(tl.which('pwsh') || tl.which('powershell') || tl.which('pwsh', true))
                 .arg('-NoLogo')

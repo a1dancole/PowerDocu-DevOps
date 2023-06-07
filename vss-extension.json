@@ -1,0 +1,40 @@
+{
+    "manifestVersion": 1,
+    "id": "power-docu",
+    "name": "PowerDocu",
+    "version": "0.0.11",
+    "publisher": "AidanCole",
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "description": "PowerDocu is a free open-source tool that allows you to document your canvas apps and Flows.",
+    "categories": [
+        "Azure Pipelines"
+    ],
+    "tags": [
+        "release",
+        "build"
+    ],
+    "icons": {
+        "default": "PowerDocu/icon.png"
+    },
+    "files": [
+        {
+            "path": "PowerDocu"
+        }
+    ],
+    "contributions": [
+        {
+            "id": "custom-build-release-task",
+            "type": "ms.vss-distributed-task.task",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "PowerDocu"
+            }
+        }
+    ]
+}

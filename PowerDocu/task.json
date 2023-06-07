@@ -1,6 +1,6 @@
 {
     "id": "255799c1-9f7d-442d-ae53-aa43769f13d6",
-    "name": "powerdocu",
+    "name": "PowerDocu",
     "friendlyName": "PowerDocu",
     "description": "Generate tehcnical documentation for your Power Apps canvas apps and Power Automate Flows",
     "helpMarkDown": "[For more information on this task please visit](https://github.com/modery/PowerDocu)",
@@ -25,13 +25,13 @@
         {
           "name": "Advanced",
           "displayName": "Advanced Settings",
-          "isExpanded": true
+          "isExpanded": false
         }
       ],
     "inputs": [
         {
             "name": "itemsToDocument",
-            "type": "string",
+            "type": "filePath",
             "label": "Items to Document",
             "defaultValue": "",
             "required": true,
@@ -84,7 +84,7 @@
         },
         {
             "name": "wordTemplate",
-            "type": "string",
+            "type": "filePath",
             "label": "Word Template",
             "defaultValue": "",
             "required": false,
