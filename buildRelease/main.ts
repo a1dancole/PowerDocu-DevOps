@@ -10,7 +10,6 @@ import { ToolRunner } from 'azure-pipelines-task-lib/toolrunner';
 
 var DecompressZip = require('decompress-zip');
 var config = require('./config.json');
-var task = require('./task.json')
 
 const area: string = 'PowerDocu';
 const userAgent: string = `powerdocu-${config.version}`;
@@ -63,7 +62,7 @@ function publishTelemetry(feature, properties: any): void {
 async function getPowerDocuRelease(handler): Promise<PowerDocuRelease> {
     return new Promise<PowerDocuRelease>((resolve, reject) => {
         let httpClient: httpc.HttpClient = new httpc.HttpClient(userAgent, [handler], { ignoreSslError: true });
-        let latestReleaseUrl = `https://api.github.com/repos/modery/PowerDocu/releases/tags/${powerDocuVersion}`;
+        let latestReleaseUrl = `${config.GitHubRepository}/releases/tags/${powerDocuVersion}`;
         latestReleaseUrl = latestReleaseUrl.replace(/([^:]\/)\/+/g, "$1");
 
         console.log(`Fetching release from ${latestReleaseUrl}`);
@@ -97,38 +96,42 @@ function executeWithRetries<T>(operationName: string, operation: () => Promise<T
 
 function getCliWithArguments(downloadPath: string): Promise<tr.ToolRunner> {
     return new Promise<tr.ToolRunner>((resolve, reject) => {
-        let cli = tl.tool(tl.which('bash', true));
+        try {
+            
+            let itemsToDocument = process.env.INPUT_ITEMSTODOCUMENT;
+            let markDown = process.env.INPUT_MARKDOWN;
+            let word = process.env.INPUT_WORD;
+            let changesOnly = process.env.INPUT_CHANGESONLY;
+            let defaultValues = process.env.INPUT_DEFAULTVALUES;
+            let sortFlowsByName = process.env.INPUT_SORTFLOWSBYNAME;
+            let wordTemplate = process.env.INPUT_WORDTEMPLATE;
+            let cli = tl.tool(tl.which('pwsh') || tl.which('powershell') || tl.which('pwsh', true))
+                .arg('-NoLogo')
+                .arg('-NoProfile')
+                .arg('-NonInteractive')
+                .arg('.\\PowerDocu.CLI.exe')
+                .arg('-p')
+                .arg(itemsToDocument)
+                .argIf(markDown == 'true', '-m')
+                .argIf(word == 'true', '-w')
+                .argIf(changesOnly == 'true', '-c')
+                .argIf(defaultValues == 'true', '-d')
+                .argIf(sortFlowsByName == 'true', '-s')
+                .argIf(wordTemplate != '', '-t')
+                .argIf(wordTemplate != '', wordTemplate);
 
-        let itemsToDocument: string = tl.getInput('itemsToDocument', true);
-        let markDown: boolean = tl.getBoolInput('markDown', false);
-        let word: boolean = tl.getBoolInput('word', false);
-        let changesOnly: boolean = tl.getBoolInput('changesOnly', false);
-        let defaultValues: boolean = tl.getBoolInput('defaultValues', false);
-        let sortFlowsByName: boolean = tl.getBoolInput('sortFlowsByName', false);
-        let wordTemplate: string = tl.getInput('wordTemplate', false);
-    
-        cli.arg('.\PowerDocu.CLI.exe -p ' + itemsToDocument);
-    
-        if (markDown) {
-            cli.arg('-m')
+            // let itemsToDocument = tl.getInput('itemsToDocument', false) ?? process.env.INPUT_ITEMSTODOCUMENT;
+            // let markDown = tl.getBoolInput('markDown', false) ?? process.env.INPUT_MARKDOWN;
+            // let word = tl.getBoolInput('word', false) ?? process.env.INPUT_WORD;
+            // let changesOnly = tl.getBoolInput('changesOnly', false) ?? process.env.INPUT_CHANGESONLY;
+            // let defaultValues = tl.getBoolInput('defaultValues', false) ?? process.env.INPUT_DEFAULTVALUES;
+            // let sortFlowsByName = tl.getBoolInput('sortFlowsByName', false) ?? process.env.INPUT_SORTFLOWSBYNAME;
+            // let wordTemplate = tl.getInput('wordTemplate', false) ?? process.env.INPUT_WORDTEMPLATE;
+
+            resolve(cli);
+        } catch (err) {
+            reject(err)
         }
-        if (word) {
-            cli.arg('-w')
-        }
-        if (changesOnly) {
-            cli.arg('-c')
-        }
-        if (defaultValues) {
-            cli.arg('-d')
-        }
-        if (sortFlowsByName) {
-            cli.arg('-s')
-        }
-        if (wordTemplate != '') {
-            cli.arg('-t ' + wordTemplate)
-        }
-    
-        resolve(cli);
     })
 }
 
@@ -186,7 +189,7 @@ async function downloadGitHubRelease(release: PowerDocuRelease): Promise<void> {
         if (parallelLimit) {
             downloaderOptions.parallelProcessingLimit = parallelLimit;
         }
-    
+
         await downloader.processItems(zipProvider, filesystemProvider, downloaderOptions).then(async () => {
             resolve();
         }).catch(err => {
@@ -219,13 +222,13 @@ async function main(): Promise<void> {
 
             var cli = await getCliWithArguments(downloadPath);
             let options: tr.IExecOptions = {
-                cwd: downloadPath,
+                cwd: path.join(__dirname, "PowerDocu"),
                 failOnStdErr: false,
                 errStream: process.stdout,
                 outStream: process.stdout,
                 ignoreReturnCode: true
             };
-        
+
             cli.on('stderr', (data: Buffer) => {
                 stderrFailure = true;
                 aggregatedStderr.push(data.toString('utf8'));

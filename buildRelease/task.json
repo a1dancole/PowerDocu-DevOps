@@ -35,7 +35,7 @@
             "type": "boolean",
             "label": "Markdown",
             "defaultValue": false,
-            "required": true,
+            "required": false,
             "helpMarkDown": "Format documentation as Markdown"
         },
         {
@@ -43,7 +43,7 @@
             "type": "boolean",
             "label": "Word",
             "defaultValue": true,
-            "required": true,
+            "required": false,
             "helpMarkDown": "Format documentation as Word"
         },
         {
@@ -51,7 +51,7 @@
             "type": "boolean",
             "label": "Changes Only",
             "defaultValue": false,
-            "required": true,
+            "required": false,
             "helpMarkDown": "Document changes only or all properties"
         },
         {
@@ -59,7 +59,7 @@
             "type": "boolean",
             "label": "Default Values",
             "defaultValue": true,
-            "required": true,
+            "required": false,
             "helpMarkDown": "Document Canvas App Default values"
         },
         {
@@ -67,7 +67,7 @@
             "type": "boolean",
             "label": "Sort Flows By Name",
             "defaultValue": false,
-            "required": true,
+            "required": false,
             "helpMarkDown": "Sort flows by name or order of appearance"
         },
         {
@@ -81,12 +81,10 @@
     ],
     "execution": {
         "Node10": {
-            "target": "main.js",
-            "argumentFormat": ""
+            "target": "main.js"
         },
         "Node16": {
-            "target": "main.js",
-            "argumentFormat": ""
+            "target": "main.js"
         }
     },
     "messages": {
