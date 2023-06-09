@@ -15,11 +15,11 @@ export class Retry {
             resolve(result);
         }).catch((error) => {
             if (currentRetryCount <= 0) {
-                tl.error(tl.loc("OperationFailed", operationName, error));
+                console.log(`##[error] ${tl.loc("OperationFailed", operationName, error)}`)
                 reject(error);
             }
             else {
-                tl.debug(tl.loc('RetryingOperation', operationName, currentRetryCount));
+                console.log(`##[warning] ${tl.loc('RetryingOperation', operationName, currentRetryCount)}`)
                 currentRetryCount = currentRetryCount - 1;
                 setTimeout(() => this.RetryImplementation(operationName, operation, currentRetryCount, resolve, reject), 4 * 1000);
             }

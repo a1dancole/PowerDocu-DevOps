@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "power-docu",
     "name": "PowerDocu",
-    "version": "0.0.11",
+    "version": "1.0.9",
     "publisher": "AidanCole",
     "targets": [
         {

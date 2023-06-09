@@ -14,12 +14,12 @@ export class GitHubApi {
             let httpClient: httpc.HttpClient = new httpc.HttpClient(name, [handler], { ignoreSslError: true });
             url = url.replace(/([^:]\/)\/+/g, "$1");
 
-            tl.debug(`Fetching release from ${url}`);
+            console.log(`##[command] Fetching release from ${url}`)
             httpClient.get(url).then((res) => {
                 res.readBody().then((body) => {
                     let response: GithubRelease = JSON.parse(body);
                     let selfContainedRelease = response.assets.filter(o => o.name.includes('selfcontained'))[0];
-                    tl.debug(`Found release on GitHub ${selfContainedRelease.name} with download URL ${selfContainedRelease.browser_download_url}`);
+                    console.log(`##[command] Found release on GitHub ${selfContainedRelease.name} with download URL ${selfContainedRelease.browser_download_url}`)
 
                     let release: PowerDocuRelease = {
                         Url: selfContainedRelease.browser_download_url,
@@ -29,8 +29,8 @@ export class GitHubApi {
                     resolve(release);
                 });
             }, (reason) => {
+                console.log(`##[warning] Failed to retrieve self contained release reason: ${reason}`)
                 reject(reason);
-                tl.warning(`Failed to retrieve self contained release reason: ${reason}`)
             });
         });
     }

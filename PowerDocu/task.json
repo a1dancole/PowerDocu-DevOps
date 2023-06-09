@@ -13,8 +13,8 @@
     ],
     "version": {
         "Major": 0,
-        "Minor": 1,
-        "Patch": 0
+        "Minor": 2,
+        "Patch": 3
     },
     "visibility": [
         "Build",
@@ -25,7 +25,7 @@
         {
           "name": "Advanced",
           "displayName": "Advanced Settings",
-          "isExpanded": false
+          "isExpanded": true
         }
       ],
     "inputs": [
@@ -38,13 +38,20 @@
             "helpMarkDown": "Semi colon delimited list of paths of items to document"
         },
         {
+            "name": "outputPath",
+            "type": "filePath",
+            "label": "Output Path",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Path where to generate write documentation to"
+        },
+        {
             "name": "markDown",
             "type": "boolean",
             "label": "Markdown",
             "defaultValue": false,
             "required": false,
-            "helpMarkDown": "Format documentation as Markdown",
-            "groupName": "Advanced"
+            "helpMarkDown": "Format documentation as Markdown"
         },
         {
             "name": "word",
@@ -52,8 +59,7 @@
             "label": "Word",
             "defaultValue": true,
             "required": false,
-            "helpMarkDown": "Format documentation as Word",
-            "groupName": "Advanced"
+            "helpMarkDown": "Format documentation as Word"
         },
         {
             "name": "changesOnly",
